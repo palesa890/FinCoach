@@ -1,0 +1,309 @@
+import React, { useState, useEffect } from "react";
+import { Stokvel, User } from "@/entities/all";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { 
+  Users, 
+  Plus, 
+  Search, 
+  Shield, 
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  UserPlus
+} from "lucide-react";
+
+import StokvelCard from "../components/stokvels/StokvelCard";
+import StokvelForm from "../components/stokvels/StokvelForm";
+import StokvelDetail from "../components/stokvels/StokvelDetail";
+import MyStokvelContributions from "../components/stokvels/MyStokvelContributions";
+
+export default function Stokvels() {
+  const [stokvels, setStokvels] = useState([]);
+  const [myStokvels, setMyStokvels] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedStokvel, setSelectedStokvel] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [stokvelsData, userData] = await Promise.all([
+        Stokvel.list("-created_date"),
+        User.me()
+      ]);
+      setStokvels(stokvelsData);
+      setCurrentUser(userData);
+      
+      // Filter user's stokvels
+      const userStokvels = stokvelsData.filter(s => 
+        s.admin_id === userData.email || s.members?.includes(userData.email)
+      );
+      setMyStokvels(userStokvels);
+    } catch (error) {
+      console.error("Error loading stokvels:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const handleStokvelCreate = async (stokvelData) => {
+    try {
+      await Stokvel.create({
+        ...stokvelData,
+        admin_id: currentUser.email,
+        current_members: 1,
+        members: []
+      });
+      setShowForm(false);
+      loadData();
+    } catch (error) {
+      console.error("Error creating stokvel:", error);
+    }
+  };
+
+  const handleJoinStokvel = async (stokvel) => {
+    if (!currentUser) {
+      alert("Please log in to join a stokvel");
+      return;
+    }
+
+    // Check if already a member
+    if (stokvel.admin_id === currentUser.email || stokvel.members?.includes(currentUser.email)) {
+      alert("You're already a member of this stokvel!");
+      return;
+    }
+
+    // Check if stokvel is full
+    if (stokvel.current_members >= stokvel.max_members) {
+      alert("This stokvel is full. Cannot join.");
+      return;
+    }
+
+    // Check if stokvel is recruiting
+    if (stokvel.status !== "recruiting") {
+      alert("This stokvel is not accepting new members.");
+      return;
+    }
+
+    try {
+      const updatedMembers = [...(stokvel.members || []), currentUser.email];
+      const updatedMemberCount = stokvel.current_members + 1;
+
+      await Stokvel.update(stokvel.id, {
+        members: updatedMembers,
+        current_members: updatedMemberCount,
+        // If stokvel is now full, change status to active
+        status: updatedMemberCount >= stokvel.max_members ? "active" : stokvel.status
+      });
+
+      alert("Successfully joined the stokvel!");
+      loadData();
+    } catch (error) {
+      console.error("Error joining stokvel:", error);
+      alert("Failed to join stokvel. Please try again.");
+    }
+  };
+
+  const filteredStokvels = stokvels.filter(stokvel => {
+    const matchesSearch = stokvel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         stokvel.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === "all" || stokvel.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  if (showForm) {
+    return (
+      <StokvelForm 
+        onSave={handleStokvelCreate}
+        onCancel={() => setShowForm(false)}
+      />
+    );
+  }
+
+  if (selectedStokvel) {
+    return (
+      <StokvelDetail 
+        stokvel={selectedStokvel}
+        currentUser={currentUser}
+        onBack={() => setSelectedStokvel(null)}
+        onUpdate={loadData}
+        onJoin={handleJoinStokvel}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+                Stokvels 🤝
+              </h1>
+              <p className="text-lg text-slate-600">
+                Join savings groups and build wealth together
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="bg-purple-600 hover:bg-purple-700 shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Stokvel
+              </Button>
+            </div>
+          </div>
+
+          {/* User Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Users className="w-5 h-5 text-purple-500" />
+                  My Stokvels
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {myStokvels.length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Shield className="w-5 h-5 text-emerald-500" />
+                  Trust Score
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {currentUser?.trust_score || 100}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <DollarSign className="w-5 h-5 text-blue-500" />
+                  Total Pooled
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  R{myStokvels.reduce((sum, s) => sum + (s.total_pool || 0), 0).toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <UserPlus className="w-5 h-5 text-amber-500" />
+                  Available Groups
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {stokvels.filter(s => s.status === "recruiting").length}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* My Contributions */}
+          {myStokvels.length > 0 && (
+            <MyStokvelContributions 
+              stokvels={myStokvels}
+              currentUser={currentUser}
+            />
+          )}
+
+          {/* Search and Filters */}
+          <Card className="glass-effect shadow-lg border-0 mb-8">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search stokvels..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-4 py-2 border border-slate-200 rounded-md bg-white text-sm"
+                >
+                  <option value="all">All Status</option>
+                  <option value="recruiting">Recruiting</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stokvel Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+              Array(6).fill(0).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-slate-200 rounded mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-20 bg-slate-200 rounded"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              filteredStokvels.map((stokvel) => (
+                <StokvelCard
+                  key={stokvel.id}
+                  stokvel={stokvel}
+                  onSelect={setSelectedStokvel}
+                  onJoin={handleJoinStokvel}
+                  currentUser={currentUser}
+                />
+              ))
+            )}
+          </div>
+
+          {filteredStokvels.length === 0 && !isLoading && (
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-slate-700 mb-2">No stokvels found</h3>
+              <p className="text-slate-500 mb-6">Be the first to create a savings group!</p>
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Stokvel
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

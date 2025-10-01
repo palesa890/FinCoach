@@ -1,0 +1,392 @@
+import React, { useState, useEffect } from "react";
+import { Course, User, CourseProgress } from "@/entities/all";
+import { InvokeLLM } from "@/integrations/Core";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { 
+  BookOpen, 
+  Play, 
+  Clock, 
+  Award, 
+  Search, 
+  Filter, 
+  ExternalLink,
+  Loader2,
+  DollarSign,
+  Gift,
+  CheckCircle
+} from "lucide-react";
+
+import CourseDetail from "../components/courses/CourseDetail";
+import UserProgress from "../components/courses/UserProgress";
+
+export default function Courses() {
+  const [courses, setCourses] = useState([]);
+  const [courseProgress, setCourseProgress] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
+  const [selectedPricing, setSelectedPricing] = useState("all");
+
+  useEffect(() => {
+    loadData();
+    loadCoursesFromAPI();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [userData, progressData] = await Promise.all([
+        User.me(),
+        CourseProgress.list("-updated_date")
+      ]);
+      setCurrentUser(userData);
+      setCourseProgress(progressData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const loadCoursesFromAPI = async () => {
+    setIsLoadingCourses(true);
+    try {
+      const response = await InvokeLLM({
+        prompt: `Find 15 high-quality finance courses for South African students. Include both FREE and PAID courses. For each course, clearly indicate if it's free or paid.
+
+        Include courses on:
+        - Personal finance basics
+        - Budgeting and saving
+        - Credit management
+        - Investment fundamentals
+        - Debt management
+        - Student financial literacy
+        
+        For each course, provide:
+        - Title
+        - Brief description (2-3 sentences)
+        - Platform (e.g., Coursera, edX, Khan Academy, Udemy, YouTube)
+        - Direct URL link (must be a valid, working link)
+        - Estimated duration in minutes
+        - Difficulty level (beginner/intermediate/advanced)
+        - Category (budgeting/investing/debt_management/credit_building/student_finance/behavioral_finance)
+        - is_free (boolean: true if completely free, false if paid)
+        - price (string: "Free" if free, otherwise the price like "R299" or "$29")
+        
+        Prioritize:
+        1. Mix of free and paid courses
+        2. Courses relevant to South African context
+        3. Courses from reputable sources
+        4. Recently created or updated courses`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            courses: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  platform: { type: "string" },
+                  url: { type: "string" },
+                  duration_minutes: { type: "number" },
+                  difficulty: { type: "string" },
+                  category: { type: "string" },
+                  is_free: { type: "boolean" },
+                  price: { type: "string" }
+                }
+              }
+            }
+          }
+        },
+        add_context_from_internet: true
+      });
+
+      if (response && response.courses) {
+        setCourses(response.courses);
+      }
+    } catch (error) {
+      console.error("Error loading courses:", error);
+    }
+    setIsLoadingCourses(false);
+  };
+
+  const handleCourseStart = (course) => {
+    setSelectedCourse(course);
+  };
+
+  const handleCourseComplete = async (course) => {
+    try {
+      // Check if progress already exists
+      const existing = courseProgress.find(p => p.course_url === course.url);
+      
+      if (existing) {
+        await CourseProgress.update(existing.id, {
+          completed: true,
+          progress: 100
+        });
+      } else {
+        await CourseProgress.create({
+          course_title: course.title,
+          course_url: course.url,
+          progress: 100,
+          completed: true
+        });
+      }
+      
+      loadData();
+    } catch (error) {
+      console.error("Error marking course complete:", error);
+    }
+  };
+
+  const getCourseProgress = (courseUrl) => {
+    const progress = courseProgress.find(p => p.course_url === courseUrl);
+    return progress || null;
+  };
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         course.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || course.category === selectedCategory;
+    const matchesDifficulty = selectedDifficulty === "all" || course.difficulty === selectedDifficulty;
+    const matchesPricing = selectedPricing === "all" || 
+                          (selectedPricing === "free" && course.is_free) ||
+                          (selectedPricing === "paid" && !course.is_free);
+    
+    return matchesSearch && matchesCategory && matchesDifficulty && matchesPricing;
+  });
+
+  const categories = ["all", ...new Set(courses.map(c => c.category).filter(Boolean))];
+  const difficulties = ["all", "beginner", "intermediate", "advanced"];
+
+  const categoryColors = {
+    budgeting: "bg-emerald-100 text-emerald-800",
+    investing: "bg-blue-100 text-blue-800", 
+    debt_management: "bg-red-100 text-red-800",
+    credit_building: "bg-purple-100 text-purple-800",
+    behavioral_finance: "bg-amber-100 text-amber-800",
+    student_finance: "bg-indigo-100 text-indigo-800"
+  };
+
+  if (selectedCourse) {
+    return (
+      <CourseDetail 
+        course={selectedCourse}
+        onBack={() => setSelectedCourse(null)}
+        currentUser={currentUser}
+        onComplete={handleCourseComplete}
+        existingProgress={getCourseProgress(selectedCourse.url)}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+                Financial Learning Center 📚
+              </h1>
+              <p className="text-lg text-slate-600">
+                Master money management with curated courses
+              </p>
+            </div>
+            <Button 
+              onClick={loadCoursesFromAPI}
+              disabled={isLoadingCourses}
+              variant="outline"
+            >
+              {isLoadingCourses ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Refresh Courses"
+              )}
+            </Button>
+          </div>
+
+          {/* User Progress Overview */}
+          <UserProgress 
+            currentUser={currentUser} 
+            courseProgress={courseProgress} 
+            isLoading={isLoading} 
+          />
+
+          {/* Search and Filters */}
+          <Card className="glass-effect shadow-lg border-0 mb-8">
+            <CardContent className="p-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-3 py-2 border border-slate-200 rounded-md bg-white text-sm"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat === "all" ? "All Categories" : cat.replace(/_/g, ' ')}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedDifficulty}
+                    onChange={(e) => setSelectedDifficulty(e.target.value)}
+                    className="px-3 py-2 border border-slate-200 rounded-md bg-white text-sm"
+                  >
+                    {difficulties.map(diff => (
+                      <option key={diff} value={diff}>
+                        {diff === "all" ? "All Levels" : diff}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedPricing}
+                    onChange={(e) => setSelectedPricing(e.target.value)}
+                    className="px-3 py-2 border border-slate-200 rounded-md bg-white text-sm"
+                  >
+                    <option value="all">All Pricing</option>
+                    <option value="free">Free Only</option>
+                    <option value="paid">Paid Only</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Course Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading || isLoadingCourses ? (
+              Array(6).fill(0).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-slate-200 rounded mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-20 bg-slate-200 rounded mb-4"></div>
+                    <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              filteredCourses.map((course, index) => {
+                const progress = getCourseProgress(course.url);
+                const isCompleted = progress?.completed;
+                
+                return (
+                  <Card key={index} className="glass-effect shadow-lg border-0 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <CardHeader>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className={`p-2 rounded-lg ${categoryColors[course.category] || 'bg-slate-100 text-slate-800'}`}>
+                            <BookOpen className="w-5 h-5" />
+                          </div>
+                          {course.platform && (
+                            <Badge variant="outline" className="text-xs">
+                              {course.platform}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1 items-end">
+                          <Badge variant="outline" className="text-xs">
+                            {course.difficulty}
+                          </Badge>
+                          {course.is_free ? (
+                            <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                              <Gift className="w-3 h-3 mr-1" />
+                              Free
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-blue-100 text-blue-800 text-xs">
+                              <DollarSign className="w-3 h-3 mr-1" />
+                              {course.price || "Paid"}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <CardTitle className="group-hover:text-emerald-600 transition-colors">
+                        {course.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-slate-600 text-sm mb-4 line-clamp-3">
+                        {course.description}
+                      </p>
+                      
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{course.duration_minutes || 30} min</span>
+                        </div>
+                        {isCompleted && (
+                          <div className="flex items-center gap-1 text-emerald-600">
+                            <CheckCircle className="w-3 h-3" />
+                            <span>Completed</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {progress && !isCompleted && (
+                        <div className="mb-4">
+                          <Progress value={progress.progress || 0} className="h-2" />
+                          <p className="text-xs text-slate-500 mt-1">{progress.progress || 0}% complete</p>
+                        </div>
+                      )}
+
+                      <a 
+                        href={course.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full block"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCourseStart(course);
+                        }}
+                      >
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          {isCompleted ? "Review Course" : "Start Learning"}
+                        </Button>
+                      </a>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+
+          {filteredCourses.length === 0 && !isLoading && !isLoadingCourses && (
+            <div className="text-center py-12">
+              <BookOpen className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-slate-700 mb-2">No courses found</h3>
+              <p className="text-slate-500">Try adjusting your search or filter criteria</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

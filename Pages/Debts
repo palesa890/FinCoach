@@ -1,0 +1,209 @@
+import React, { useState, useEffect } from "react";
+import { Debt, User } from "@/entities/all";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Banknote, 
+  Plus, 
+  TrendingDown, 
+  AlertTriangle, 
+  CheckCircle,
+  Calendar,
+  Calculator,
+  Target
+} from "lucide-react";
+import { format, differenceInDays } from "date-fns";
+
+import DebtForm from "../components/debts/DebtForm";
+import DebtList from "../components/debts/DebtList";
+import DebtPayoffCalculator from "../components/debts/DebtPayoffCalculator";
+import DebtStrategy from "../components/debts/DebtStrategy";
+
+export default function Debts() {
+  const [debts, setDebts] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingDebt, setEditingDebt] = useState(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [debtsData, userData] = await Promise.all([
+        Debt.list("-created_date"),
+        User.me()
+      ]);
+      setDebts(debtsData);
+      setCurrentUser(userData);
+    } catch (error) {
+      console.error("Error loading debts:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const handleDebtSave = async (debtData) => {
+    try {
+      if (editingDebt) {
+        await Debt.update(editingDebt.id, debtData);
+      } else {
+        await Debt.create(debtData);
+      }
+      setShowForm(false);
+      setEditingDebt(null);
+      loadData();
+    } catch (error) {
+      console.error("Error saving debt:", error);
+    }
+  };
+
+  const handleEdit = (debt) => {
+    setEditingDebt(debt);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (debtId) => {
+    if (window.confirm("Are you sure you want to delete this debt?")) {
+      try {
+        await Debt.delete(debtId);
+        loadData();
+      } catch (error) {
+        console.error("Error deleting debt:", error);
+      }
+    }
+  };
+
+  const calculateTotals = () => {
+    const totalDebt = debts.reduce((sum, d) => sum + (d.current_balance || 0), 0);
+    const monthlyPayments = debts.reduce((sum, d) => sum + (d.monthly_payment || 0), 0);
+    const highPriorityDebts = debts.filter(d => d.priority === "high").length;
+    
+    return { totalDebt, monthlyPayments, highPriorityDebts };
+  };
+
+  const { totalDebt, monthlyPayments, highPriorityDebts } = calculateTotals();
+
+  if (showForm) {
+    return (
+      <DebtForm 
+        debt={editingDebt}
+        onSave={handleDebtSave}
+        onCancel={() => {
+          setShowForm(false);
+          setEditingDebt(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+                Debt Manager 💳
+              </h1>
+              <p className="text-lg text-slate-600">
+                Track and conquer your debts strategically
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Debt
+              </Button>
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Banknote className="w-5 h-5 text-red-500" />
+                  Total Debt
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  R{totalDebt.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Calendar className="w-5 h-5 text-blue-500" />
+                  Monthly Payments
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  R{monthlyPayments.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  High Priority
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {highPriorityDebts}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Target className="w-5 h-5 text-emerald-500" />
+                  Active Debts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {debts.length}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Debt List */}
+            <div className="lg:col-span-2">
+              <DebtList 
+                debts={debts}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              <DebtPayoffCalculator debts={debts} />
+              <DebtStrategy debts={debts} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

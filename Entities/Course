@@ -1,0 +1,87 @@
+{
+  "name": "Course",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Course title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Course description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "budgeting",
+        "investing",
+        "debt_management",
+        "credit_building",
+        "behavioral_finance",
+        "student_finance"
+      ],
+      "description": "Course category"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ],
+      "default": "beginner"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "Estimated completion time"
+    },
+    "lessons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "quiz_questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "correct_answer": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "badge_name": {
+      "type": "string",
+      "description": "Badge earned upon completion"
+    },
+    "points": {
+      "type": "number",
+      "default": 100,
+      "description": "Points earned for completion"
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "category"
+  ]
+}

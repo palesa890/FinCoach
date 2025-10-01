@@ -1,0 +1,64 @@
+{
+  "name": "Budget",
+  "type": "object",
+  "properties": {
+    "month": {
+      "type": "string",
+      "description": "Budget month (YYYY-MM)"
+    },
+    "monthly_income": {
+      "type": "number",
+      "description": "Total monthly income"
+    },
+    "essential_budget": {
+      "type": "number",
+      "description": "Budget for essential expenses"
+    },
+    "discretionary_budget": {
+      "type": "number",
+      "description": "Budget for discretionary spending"
+    },
+    "savings_goal": {
+      "type": "number",
+      "description": "Monthly savings target"
+    },
+    "essential_spent": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount spent on essentials"
+    },
+    "discretionary_spent": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount spent on discretionary items"
+    },
+    "savings_actual": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual savings amount"
+    },
+    "health_score": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "description": "Financial health grade"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "green",
+        "amber",
+        "red"
+      ],
+      "description": "Traffic light risk indicator"
+    }
+  },
+  "required": [
+    "month",
+    "monthly_income"
+  ]
+}

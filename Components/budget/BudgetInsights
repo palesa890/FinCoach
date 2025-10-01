@@ -1,0 +1,149 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Lightbulb, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
+
+export default function BudgetInsights({ budget, riskLevel, healthGrade }) {
+  const generateInsights = () => {
+    const insights = [];
+
+    // Risk-based insights
+    if (riskLevel === "red") {
+      insights.push({
+        type: "warning",
+        icon: AlertTriangle,
+        title: "Budget Alert",
+        description: "You're spending more than planned this month. Consider reviewing your discretionary expenses.",
+        actionable: true
+      });
+    } else if (riskLevel === "green") {
+      insights.push({
+        type: "success", 
+        icon: CheckCircle,
+        title: "Great Job!",
+        description: "You're staying within your budget limits. Keep up the excellent financial discipline!",
+        actionable: false
+      });
+    }
+
+    // Health grade insights
+    if (healthGrade === "A") {
+      insights.push({
+        type: "success",
+        icon: TrendingUp,
+        title: "Financial Excellence",
+        description: "Your budgeting skills are outstanding! You're saving well and spending wisely.",
+        actionable: false
+      });
+    } else if (healthGrade === "D") {
+      insights.push({
+        type: "warning",
+        icon: AlertTriangle,
+        title: "Needs Attention",
+        description: "Your financial health needs improvement. Focus on increasing savings and reducing unnecessary expenses.",
+        actionable: true
+      });
+    }
+
+    // Savings insights
+    if (budget && budget.savings_goal && budget.monthly_income) {
+      const savingsRate = (budget.savings_actual || 0) / (budget.monthly_income || 1);
+      if (savingsRate < 0.1) {
+        insights.push({
+          type: "tip",
+          icon: Lightbulb,
+          title: "Boost Your Savings",
+          description: "Try to save at least 10% of your income. Consider the 'pay yourself first' strategy.",
+          actionable: true
+        });
+      }
+    }
+
+    // Budget utilization insights
+    if (budget) {
+      const essentialUtilization = budget.essential_budget ? 
+        (budget.essential_spent || 0) / budget.essential_budget : 0;
+      
+      if (essentialUtilization > 0.9) {
+        insights.push({
+          type: "tip",
+          icon: Lightbulb,
+          title: "Essential Spending High",
+          description: "You're using over 90% of your essential budget. Look for ways to reduce fixed costs.",
+          actionable: true
+        });
+      }
+    }
+
+    return insights.slice(0, 4); // Show max 4 insights
+  };
+
+  const insights = generateInsights();
+
+  const getInsightStyle = (type) => {
+    switch (type) {
+      case "success":
+        return "border-emerald-200 bg-emerald-50";
+      case "warning":
+        return "border-red-200 bg-red-50";
+      case "tip":
+        return "border-blue-200 bg-blue-50";
+      default:
+        return "border-slate-200 bg-slate-50";
+    }
+  };
+
+  const getIconStyle = (type) => {
+    switch (type) {
+      case "success":
+        return "text-emerald-600";
+      case "warning":
+        return "text-red-600";
+      case "tip":
+        return "text-blue-600";
+      default:
+        return "text-slate-600";
+    }
+  };
+
+  return (
+    <Card className="glass-effect shadow-lg border-0">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-slate-800">
+          <Lightbulb className="w-5 h-5 text-amber-500" />
+          Smart Insights & Tips
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {insights.map((insight, index) => (
+            <div 
+              key={index}
+              className={`p-4 rounded-lg border ${getInsightStyle(insight.type)}`}
+            >
+              <div className="flex items-start gap-3">
+                <insight.icon className={`w-5 h-5 mt-0.5 ${getIconStyle(insight.type)}`} />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-slate-800 mb-1">{insight.title}</h4>
+                  <p className="text-sm text-slate-600 mb-2">{insight.description}</p>
+                  {insight.actionable && (
+                    <Badge variant="outline" className="text-xs">
+                      Actionable
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {insights.length === 0 && (
+          <div className="text-center py-8">
+            <Lightbulb className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600">Keep tracking your budget to get personalized insights!</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

@@ -1,0 +1,64 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, CheckCircle, AlertCircle } from "lucide-react";
+
+const levelConfig = {
+  green: {
+    icon: CheckCircle,
+    color: "text-emerald-500",
+    bg: "bg-emerald-50",
+    title: "On Track",
+    description: "Spending within limits"
+  },
+  amber: {
+    icon: AlertTriangle,
+    color: "text-amber-500", 
+    bg: "bg-amber-50",
+    title: "Caution",
+    description: "Watch your spending"
+  },
+  red: {
+    icon: AlertCircle,
+    color: "text-red-500",
+    bg: "bg-red-50", 
+    title: "Over Budget",
+    description: "Immediate action needed"
+  }
+};
+
+export default function TrafficLightIndicator({ level, budget, isLoading }) {
+  const config = levelConfig[level] || levelConfig.amber;
+  const Icon = config.icon;
+
+  return (
+    <Card className="glass-effect shadow-lg border-0">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-slate-800">
+          <Icon className={`w-5 h-5 ${config.color}`} />
+          Spending Status
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="animate-pulse">
+            <div className="h-8 bg-slate-200 rounded mb-2"></div>
+            <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+          </div>
+        ) : (
+          <div>
+            <div className={`text-2xl font-bold mb-1 ${config.color}`}>
+              {config.title}
+            </div>
+            <p className="text-sm text-slate-600 mb-3">{config.description}</p>
+            
+            {budget && (
+              <div className="text-xs text-slate-500">
+                Total spent: R{((budget.essential_spent || 0) + (budget.discretionary_spent || 0)).toFixed(0)}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

@@ -1,0 +1,80 @@
+{
+  "name": "Transaction",
+  "type": "object",
+  "properties": {
+    "amount": {
+      "type": "number",
+      "description": "Transaction amount"
+    },
+    "description": {
+      "type": "string",
+      "description": "Transaction description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "groceries",
+        "rent",
+        "transport",
+        "entertainment",
+        "dining",
+        "shopping",
+        "education",
+        "healthcare",
+        "utilities",
+        "subscriptions",
+        "other"
+      ],
+      "description": "Spending category"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "income",
+        "expense"
+      ],
+      "description": "Transaction type"
+    },
+    "mood": {
+      "type": "string",
+      "enum": [
+        "very_happy",
+        "happy",
+        "neutral",
+        "stressed",
+        "sad",
+        "angry"
+      ],
+      "description": "User's mood when making transaction"
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "need",
+        "want",
+        "saving",
+        "investment"
+      ],
+      "description": "Behavioral classification"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Transaction date"
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "amount",
+    "description",
+    "category",
+    "type"
+  ]
+}

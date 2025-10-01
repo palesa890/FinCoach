@@ -1,0 +1,59 @@
+{
+  "name": "CreditProfile",
+  "type": "object",
+  "properties": {
+    "month": {
+      "type": "string",
+      "description": "Profile month (YYYY-MM)"
+    },
+    "credit_score": {
+      "type": "number",
+      "description": "Student-friendly credit score (0-100)"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "good",
+        "fair",
+        "poor"
+      ],
+      "description": "Credit risk level"
+    },
+    "recurring_payments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "frequency": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_monthly_commitments": {
+      "type": "number",
+      "description": "Total monthly recurring payments"
+    },
+    "debt_to_income_ratio": {
+      "type": "number",
+      "description": "Debt to income ratio percentage"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI-generated recommendations"
+    }
+  },
+  "required": [
+    "month"
+  ]
+}

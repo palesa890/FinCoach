@@ -1,0 +1,33 @@
+{
+  "name": "CourseProgress",
+  "type": "object",
+  "properties": {
+    "course_title": {
+      "type": "string",
+      "description": "Course title"
+    },
+    "course_url": {
+      "type": "string",
+      "description": "Course URL for tracking"
+    },
+    "progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Progress percentage"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether course is completed"
+    },
+    "last_accessed": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time user accessed course"
+    }
+  },
+  "required": [
+    "course_title",
+    "course_url"
+  ]
+}

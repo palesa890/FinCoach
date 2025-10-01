@@ -1,0 +1,105 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Users, Calendar, DollarSign, Shield } from "lucide-react";
+
+const statusColors = {
+  recruiting: "bg-blue-100 text-blue-800",
+  active: "bg-emerald-100 text-emerald-800",
+  completed: "bg-slate-100 text-slate-800",
+  paused: "bg-amber-100 text-amber-800"
+};
+
+export default function StokvelCard({ stokvel, onSelect, onJoin, currentUser }) {
+  const isMember = stokvel.admin_id === currentUser?.email || stokvel.members?.includes(currentUser?.email);
+  const spotsLeft = (stokvel.max_members || 10) - (stokvel.current_members || 0);
+
+  // Get admin username (email prefix only for privacy)
+  const getDisplayName = (email) => {
+    if (!email) return "Unknown";
+    return email.split('@')[0];
+  };
+
+  const handleButtonClick = (e) => {
+    e.stopPropagation();
+    if (isMember) {
+      onSelect(stokvel);
+    } else {
+      onJoin(stokvel);
+    }
+  };
+
+  return (
+    <Card 
+      className="glass-effect shadow-lg border-0 hover:shadow-xl transition-all duration-300 cursor-pointer group"
+      onClick={() => onSelect(stokvel)}
+    >
+      <CardHeader>
+        <div className="flex justify-between items-start mb-2">
+          <Badge className={statusColors[stokvel.status]}>
+            {stokvel.status}
+          </Badge>
+          {isMember && (
+            <Badge variant="outline" className="bg-purple-50 text-purple-700">
+              Member
+            </Badge>
+          )}
+        </div>
+        <CardTitle className="group-hover:text-purple-600 transition-colors">
+          {stokvel.name}
+        </CardTitle>
+        <p className="text-xs text-slate-500">
+          Admin: {getDisplayName(stokvel.admin_id)}
+        </p>
+      </CardHeader>
+      <CardContent>
+        <p className="text-slate-600 text-sm mb-4 line-clamp-2">
+          {stokvel.description}
+        </p>
+
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-slate-600">
+              <DollarSign className="w-4 h-4" />
+              <span>Contribution</span>
+            </div>
+            <span className="font-semibold">R{stokvel.contribution_amount?.toLocaleString()}</span>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-slate-600">
+              <Calendar className="w-4 h-4" />
+              <span>Frequency</span>
+            </div>
+            <span className="font-medium capitalize">{stokvel.frequency}</span>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-slate-600">
+              <Users className="w-4 h-4" />
+              <span>Members</span>
+            </div>
+            <span className="font-medium">
+              {stokvel.current_members || 0}/{stokvel.max_members || 10}
+            </span>
+          </div>
+        </div>
+
+        {stokvel.status === "recruiting" && spotsLeft > 0 && !isMember && (
+          <p className="text-xs text-amber-600 mb-3">
+            🔥 Only {spotsLeft} spots left!
+          </p>
+        )}
+
+        <Button 
+          onClick={handleButtonClick}
+          className="w-full bg-purple-600 hover:bg-purple-700"
+          disabled={stokvel.status !== "recruiting" && !isMember}
+        >
+          {isMember ? "View Details" : "Join Group"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}

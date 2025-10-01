@@ -1,0 +1,314 @@
+
+import React, { useState, useEffect } from "react";
+import { Challenge, User } from "@/entities/all";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Trophy, 
+  Target, 
+  Plus, 
+  Search, 
+  Award,
+  TrendingUp,
+  Zap,
+  Star
+} from "lucide-react";
+
+import ChallengeCard from "../components/challenges/ChallengeCard";
+import ChallengeDetail from "../components/challenges/ChallengeDetail";
+import ActiveChallenges from "../components/challenges/ActiveChallenges";
+import ChallengeForm from "../components/challenges/ChallengeForm";
+
+export default function Challenges() {
+  const [challenges, setChallenges] = useState([]);
+  const [activeChallenges, setActiveChallenges] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterDifficulty, setFilterDifficulty] = useState("all");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [challengesData, userData] = await Promise.all([
+        Challenge.list("-created_date"),
+        User.me()
+      ]);
+      setChallenges(challengesData);
+      setCurrentUser(userData);
+      
+      // Filter to show only user's own active challenges
+      const userActiveChallenges = challengesData.filter(c => 
+        !c.completed && c.created_by === userData.email
+      );
+      setActiveChallenges(userActiveChallenges);
+    } catch (error) {
+      console.error("Error loading challenges:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const handleChallengeCreate = async (challengeData) => {
+    try {
+      await Challenge.create({
+        ...challengeData,
+        current_amount: 0,
+        progress: 0
+      });
+      setShowForm(false);
+      loadData();
+    } catch (error) {
+      console.error("Error creating challenge:", error);
+    }
+  };
+
+  const handleJoinChallenge = async (challenge) => {
+    try {
+      // Create a personal copy of the challenge for this user
+      await Challenge.create({
+        title: challenge.title,
+        description: challenge.description,
+        category: challenge.category,
+        target_amount: challenge.target_amount,
+        current_amount: 0,
+        duration_days: challenge.duration_days,
+        difficulty: challenge.difficulty,
+        points_reward: challenge.points_reward,
+        badge_name: challenge.badge_name,
+        progress: 0,
+        completed: false,
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: challenge.end_date
+      });
+      loadData();
+    } catch (error) {
+      console.error("Error joining challenge:", error);
+    }
+  };
+
+  const filteredChallenges = challenges.filter(challenge => {
+    const matchesSearch = challenge.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         challenge.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === "all" || challenge.category === filterCategory;
+    const matchesDifficulty = filterDifficulty === "all" || challenge.difficulty === filterDifficulty;
+    
+    // Don't show user's own active challenges in the browse section
+    const notUserChallenge = challenge.created_by !== currentUser?.email || challenge.completed;
+    
+    return matchesSearch && matchesCategory && matchesDifficulty && notUserChallenge;
+  });
+
+  const categories = ["all", "saving", "spending_reduction", "debt_payoff", "learning", "budgeting"];
+  const difficulties = ["all", "easy", "medium", "hard"];
+
+  if (showForm) {
+    return (
+      <ChallengeForm 
+        onSave={handleChallengeCreate}
+        onCancel={() => setShowForm(false)}
+      />
+    );
+  }
+
+  if (selectedChallenge) {
+    return (
+      <ChallengeDetail 
+        challenge={selectedChallenge}
+        onBack={() => setSelectedChallenge(null)}
+        onUpdate={loadData}
+        currentUser={currentUser}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+                Financial Challenges 🏆
+              </h1>
+              <p className="text-lg text-slate-600">
+                Gamify your savings journey and earn rewards
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="bg-amber-600 hover:bg-amber-700 shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Challenge
+              </Button>
+            </div>
+          </div>
+
+          {/* User Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Target className="w-5 h-5 text-amber-500" />
+                  Active Challenges
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {activeChallenges.length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Trophy className="w-5 h-5 text-emerald-500" />
+                  Completed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {challenges.filter(c => c.completed && c.created_by === currentUser?.email).length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Star className="w-5 h-5 text-purple-500" />
+                  Total Points
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {currentUser?.total_points || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect shadow-lg border-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Award className="w-5 h-5 text-blue-500" />
+                  Badges
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {currentUser?.badges?.length || 0}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Active Challenges */}
+          {activeChallenges.length > 0 && (
+            <ActiveChallenges 
+              challenges={activeChallenges}
+              onSelect={setSelectedChallenge}
+            />
+          )}
+
+          {/* Search and Filters */}
+          <Card className="glass-effect shadow-lg border-0 mb-8">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search challenges..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="px-3 py-2 border border-slate-200 rounded-md bg-white text-sm"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat === "all" ? "All Categories" : cat.replace(/_/g, ' ')}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={filterDifficulty}
+                    onChange={(e) => setFilterDifficulty(e.target.value)}
+                    className="px-3 py-2 border border-slate-200 rounded-md bg-white text-sm"
+                  >
+                    {difficulties.map(diff => (
+                      <option key={diff} value={diff}>
+                        {diff === "all" ? "All Difficulty" : diff}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Challenge Grid */}
+          <div>
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">Browse Challenges</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {isLoading ? (
+                Array(6).fill(0).map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-6 bg-slate-200 rounded mb-2"></div>
+                      <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-20 bg-slate-200 rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                filteredChallenges.map((challenge) => (
+                  <ChallengeCard
+                    key={challenge.id}
+                    challenge={challenge}
+                    onSelect={setSelectedChallenge}
+                    onJoin={handleJoinChallenge}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          {filteredChallenges.length === 0 && !isLoading && (
+            <div className="text-center py-12">
+              <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-slate-700 mb-2">No challenges found</h3>
+              <p className="text-slate-500 mb-6">Create your own custom challenge!</p>
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Challenge
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
