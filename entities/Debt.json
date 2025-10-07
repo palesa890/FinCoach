@@ -1,0 +1,66 @@
+{
+  "name": "Debt",
+  "type": "object",
+  "properties": {
+    "creditor": {
+      "type": "string",
+      "description": "Name of creditor/institution"
+    },
+    "debt_type": {
+      "type": "string",
+      "enum": [
+        "student_loan",
+        "credit_card",
+        "personal_loan",
+        "overdraft",
+        "store_credit",
+        "other"
+      ],
+      "description": "Type of debt"
+    },
+    "original_amount": {
+      "type": "number",
+      "description": "Original debt amount"
+    },
+    "current_balance": {
+      "type": "number",
+      "description": "Current outstanding balance"
+    },
+    "monthly_payment": {
+      "type": "number",
+      "description": "Monthly payment amount"
+    },
+    "interest_rate": {
+      "type": "number",
+      "description": "Annual interest rate percentage"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Next payment due date"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    }
+  },
+  "required": [
+    "creditor",
+    "debt_type",
+    "current_balance"
+  ]
+}

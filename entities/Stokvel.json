@@ -1,0 +1,73 @@
+{
+  "name": "Stokvel",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Stokvel group name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Group description and goals"
+    },
+    "contribution_amount": {
+      "type": "number",
+      "description": "Required monthly contribution"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "monthly",
+        "quarterly"
+      ],
+      "default": "monthly"
+    },
+    "max_members": {
+      "type": "number",
+      "default": 10,
+      "description": "Maximum number of members"
+    },
+    "current_members": {
+      "type": "number",
+      "default": 1,
+      "description": "Current member count"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Array of member email addresses"
+    },
+    "total_pool": {
+      "type": "number",
+      "default": 0,
+      "description": "Total pooled amount"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "recruiting",
+        "active",
+        "completed",
+        "paused"
+      ],
+      "default": "recruiting"
+    },
+    "next_payout_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Next payout date"
+    },
+    "admin_id": {
+      "type": "string",
+      "description": "Email of group administrator"
+    }
+  },
+  "required": [
+    "name",
+    "contribution_amount"
+  ]
+}

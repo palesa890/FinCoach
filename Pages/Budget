@@ -1,0 +1,479 @@
+// import React, { useState, useEffect, useCallback } from "react";
+// import { Budget, CreditProfile, User } from "@/entities/all";
+// import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import { Button } from "@/components/ui/button";
+// import { Progress } from "@/components/ui/progress";
+// import { Badge } from "@/components/ui/badge";
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// import { 
+//   Wallet, 
+//   CreditCard, 
+//   TrendingUp, 
+//   AlertTriangle, 
+//   CheckCircle,
+//   DollarSign,
+//   Target,
+//   Shield,
+//   Upload,
+//   Calendar
+// } from "lucide-react";
+// import { format } from "date-fns";
+
+// import BudgetSetup from "../components/budget/BudgetSetup";
+// import SpendingBreakdown from "../components/budget/SpendingBreakdown";
+// import BudgetInsights from "../components/budget/BudgetInsights";
+// import CreditScoreCard from "../components/credit/CreditScoreCard";
+// import RecurringPayments from "../components/credit/RecurringPayments";
+// import CreditRecommendations from "../components/credit/CreditRecommendations";
+// import StatementUpload from "../components/credit/StatementUpload";
+
+// export default function BudgetAndCredit() {
+//   const [currentBudget, setCurrentBudget] = useState(null);
+//   const [creditProfile, setCreditProfile] = useState(null);
+//   const [isLoading, setIsLoading] = useState(true);
+//   const [showBudgetSetup, setShowBudgetSetup] = useState(false);
+//   const [showStatementUpload, setShowStatementUpload] = useState(false);
+//   const [isUploading, setIsUploading] = useState(false);
+//   const [currentUser, setCurrentUser] = useState(null);
+
+//   const currentMonth = format(new Date(), "yyyy-MM");
+
+//   const loadData = useCallback(async () => {
+//     setIsLoading(true);
+//     try {
+//       const [budgets, creditProfiles, userData] = await Promise.all([
+//         Budget.filter({ month: currentMonth }, "-created_date", 1),
+//         CreditProfile.filter({ month: currentMonth }, "-created_date", 1),
+//         User.me()
+//       ]);
+
+//       setCurrentBudget(budgets[0] || null);
+//       setCreditProfile(creditProfiles[0] || null);
+//       setCurrentUser(userData);
+      
+//       if (!budgets[0]) {
+//         setShowBudgetSetup(true);
+//       }
+//     } catch (error) {
+//       console.error("Error loading data:", error);
+//     }
+//     setIsLoading(false);
+//   }, [currentMonth]);
+
+//   useEffect(() => {
+//     loadData();
+//   }, [loadData]);
+
+//   const handleBudgetSave = async (budgetData) => {
+//     try {
+//       const newBudget = await Budget.create({
+//         ...budgetData,
+//         month: currentMonth
+//       });
+//       setCurrentBudget(newBudget);
+//       setShowBudgetSetup(false);
+//     } catch (error) {
+//       console.error("Error saving budget:", error);
+//     }
+//   };
+
+//   const handleStatementUpload = async (file) => {
+//     setIsUploading(true);
+//     try {
+//       const fileName = file.name.toLowerCase();
+//       const isValidStatement = fileName.includes('statement') || 
+//                                fileName.includes('bank') ||
+//                                file.type === 'application/pdf';
+      
+//       if (!isValidStatement) {
+//         alert("Please upload a valid bank statement (PDF format with 'statement' or 'bank' in filename)");
+//         setIsUploading(false);
+//         return;
+//       }
+
+//       const { file_url } = await UploadFile({ file });
+      
+//       const extractionSchema = {
+//         type: "object",
+//         properties: {
+//           statement_months: {
+//             type: "array",
+//             items: { type: "string" },
+//             description: "List of months covered in the statement (YYYY-MM format)"
+//           },
+//           recurring_payments: {
+//             type: "array",
+//             items: {
+//               type: "object", 
+//               properties: {
+//                 description: { type: "string" },
+//                 amount: { type: "number" },
+//                 frequency: { type: "string" }
+//               }
+//             }
+//           },
+//           total_monthly_commitments: { type: "number" },
+//           average_balance: { type: "number" },
+//           income_estimate: { type: "number" }
+//         }
+//       };
+
+//       const result = await ExtractDataFromUploadedFile({
+//         file_url,
+//         json_schema: extractionSchema
+//       });
+
+//       if (result.status === "success" && result.output) {
+//         const creditScore = calculateCreditScore(result.output);
+//         const riskLevel = getCreditRiskLevel(creditScore);
+//         const statementMonth = result.output.statement_months?.[0] || currentMonth;
+
+//         const newProfile = await CreditProfile.create({
+//           month: statementMonth,
+//           credit_score: creditScore,
+//           risk_level: riskLevel,
+//           recurring_payments: result.output.recurring_payments || [],
+//           total_monthly_commitments: result.output.total_monthly_commitments || 0,
+//           debt_to_income_ratio: result.output.income_estimate > 0 ? 
+//             ((result.output.total_monthly_commitments || 0) / result.output.income_estimate) * 100 : 0,
+//           recommendations: generateRecommendations(creditScore, riskLevel)
+//         });
+
+//         setCreditProfile(newProfile);
+//         setShowStatementUpload(false);
+//       } else {
+//         alert("Failed to extract data from statement. Please ensure it's a valid bank statement.");
+//       }
+//     } catch (error) {
+//       console.error("Error processing statement:", error);
+//       alert("Error processing bank statement. Please try again with a valid statement.");
+//     }
+//     setIsUploading(false);
+//   };
+
+//   const calculateCreditScore = (data) => {
+//     let score = 70;
+    
+//     const debtToIncome = data.income_estimate > 0 ? 
+//       (data.total_monthly_commitments || 0) / data.income_estimate : 0;
+    
+//     if (debtToIncome < 0.3) score += 15;
+//     else if (debtToIncome < 0.5) score += 5;
+//     else if (debtToIncome > 0.7) score -= 20;
+    
+//     const recurringCount = data.recurring_payments?.length || 0;
+//     if (recurringCount >= 3 && recurringCount <= 6) score += 10;
+//     else if (recurringCount > 8) score -= 5;
+
+//     return Math.max(0, Math.min(100, score));
+//   };
+
+//   const getCreditRiskLevel = (score) => {
+//     if (score >= 80) return "excellent";
+//     if (score >= 65) return "good";
+//     if (score >= 50) return "fair";
+//     return "poor";
+//   };
+
+//   const generateRecommendations = (score, riskLevel) => {
+//     const recommendations = [];
+
+//     if (riskLevel === "poor") {
+//       recommendations.push("Focus on paying down existing debts to improve your debt-to-income ratio");
+//       recommendations.push("Consider consolidating high-interest debts into lower-rate options");
+//       recommendations.push("Avoid taking on new credit commitments until your situation improves");
+//     } else if (riskLevel === "fair") {
+//       recommendations.push("Work on reducing monthly commitments to below 30% of income");
+//       recommendations.push("Build an emergency fund to avoid relying on credit");
+//       recommendations.push("Consider a secured credit card to build credit history");
+//     } else if (riskLevel === "good") {
+//       recommendations.push("Maintain your current payment patterns");
+//       recommendations.push("Consider investing in your education or skills for higher income");
+//       recommendations.push("Start building a diverse credit portfolio responsibly");
+//     } else {
+//       recommendations.push("Excellent credit health! Consider helping others learn financial literacy");
+//       recommendations.push("You may qualify for premium credit products with better terms");
+//       recommendations.push("Focus on wealth building and investment opportunities");
+//     }
+
+//     return recommendations;
+//   };
+
+//   const getBudgetRiskLevel = () => {
+//     if (!currentBudget) return "amber";
+//     return currentBudget.risk_level || "amber";
+//   };
+
+//   const getHealthGrade = () => {
+//     if (!currentBudget) return "C";
+//     return currentBudget.health_score || "C";
+//   };
+
+//   if (showBudgetSetup) {
+//     return (
+//       <BudgetSetup 
+//         onSave={handleBudgetSave}
+//         onCancel={() => setShowBudgetSetup(false)}
+//         currentUser={currentUser}
+//       />
+//     );
+//   }
+
+//   if (showStatementUpload) {
+//     return (
+//       <StatementUpload
+//         onUpload={handleStatementUpload}
+//         onCancel={() => setShowStatementUpload(false)}
+//         isUploading={isUploading}
+//       />
+//     );
+//   }
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+//       <div className="p-4 md:p-8">
+//         <div className="max-w-7xl mx-auto">
+//           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+//             <div>
+//               <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+//                 Financial Health Hub 💰
+//               </h1>
+//               <p className="text-lg text-slate-600">
+//                 Track your budget and monitor credit health
+//               </p>
+//             </div>
+//           </div>
+
+//           <Tabs defaultValue="budget" className="space-y-8">
+//             <TabsList className="grid w-full max-w-md grid-cols-2">
+//               <TabsTrigger value="budget" className="flex items-center gap-2">
+//                 <Wallet className="w-4 h-4" />
+//                 Budget Tracker
+//               </TabsTrigger>
+//               <TabsTrigger value="credit" className="flex items-center gap-2">
+//                 <CreditCard className="w-4 h-4" />
+//                 Credit Health
+//               </TabsTrigger>
+//             </TabsList>
+
+//             <TabsContent value="budget" className="space-y-8">
+//               {currentBudget ? (
+//                 <>
+//                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           <DollarSign className="w-5 h-5 text-emerald-500" />
+//                           Monthly Income
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="text-2xl font-bold text-emerald-600">
+//                           R{currentBudget.monthly_income?.toLocaleString()}
+//                         </div>
+//                       </CardContent>
+//                     </Card>
+
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           <Target className="w-5 h-5 text-blue-500" />
+//                           Health Grade
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="text-2xl font-bold text-blue-600">
+//                           {getHealthGrade()}
+//                         </div>
+//                       </CardContent>
+//                     </Card>
+
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           {getBudgetRiskLevel() === "green" && <CheckCircle className="w-5 h-5 text-emerald-500" />}
+//                           {getBudgetRiskLevel() === "amber" && <AlertTriangle className="w-5 h-5 text-amber-500" />}
+//                           {getBudgetRiskLevel() === "red" && <AlertTriangle className="w-5 h-5 text-red-500" />}
+//                           Status
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <Badge 
+//                           className={`text-sm ${
+//                             getBudgetRiskLevel() === "green" ? "bg-emerald-100 text-emerald-800" :
+//                             getBudgetRiskLevel() === "amber" ? "bg-amber-100 text-amber-800" :
+//                             "bg-red-100 text-red-800"
+//                           }`}
+//                         >
+//                           {getBudgetRiskLevel() === "green" && "On Track"}
+//                           {getBudgetRiskLevel() === "amber" && "Caution"}
+//                           {getBudgetRiskLevel() === "red" && "Over Budget"}
+//                         </Badge>
+//                       </CardContent>
+//                     </Card>
+
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           <Target className="w-5 h-5 text-purple-500" />
+//                           Savings Rate
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="text-2xl font-bold text-purple-600">
+//                           {currentBudget.monthly_income ? 
+//                             Math.round(((currentBudget.savings_actual || 0) / currentBudget.monthly_income) * 100) : 0
+//                           }%
+//                         </div>
+//                       </CardContent>
+//                     </Card>
+//                   </div>
+
+//                   <SpendingBreakdown 
+//                     budget={currentBudget}
+//                     isLoading={isLoading}
+//                   />
+
+//                   <BudgetInsights 
+//                     budget={currentBudget}
+//                     riskLevel={getBudgetRiskLevel()}
+//                     healthGrade={getHealthGrade()}
+//                   />
+
+//                   <div className="flex justify-center">
+//                     <Button 
+//                       variant="outline"
+//                       onClick={() => setShowBudgetSetup(true)}
+//                     >
+//                       Edit Budget
+//                     </Button>
+//                   </div>
+//                 </>
+//               ) : (
+//                 <div className="text-center py-12">
+//                   <Wallet className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+//                   <h3 className="text-xl font-semibold text-slate-700 mb-2">No Budget Set</h3>
+//                   <p className="text-slate-500 mb-6">Create your first budget to start tracking</p>
+//                   <Button 
+//                     onClick={() => setShowBudgetSetup(true)}
+//                     className="bg-emerald-600 hover:bg-emerald-700"
+//                   >
+//                     <Wallet className="w-4 h-4 mr-2" />
+//                     Create Budget
+//                   </Button>
+//                 </div>
+//               )}
+//             </TabsContent>
+
+//             <TabsContent value="credit" className="space-y-8">
+//               {creditProfile ? (
+//                 <>
+//                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+//                     <CreditScoreCard 
+//                       score={creditProfile.credit_score}
+//                       riskLevel={creditProfile.risk_level}
+//                       isLoading={isLoading}
+//                     />
+
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           <DollarSign className="w-5 h-5 text-purple-500" />
+//                           Monthly Commitments
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="text-2xl font-bold text-purple-600">
+//                           R{creditProfile.total_monthly_commitments?.toLocaleString() || 0}
+//                         </div>
+//                         <p className="text-sm text-slate-600">Total recurring payments</p>
+//                       </CardContent>
+//                     </Card>
+
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           <TrendingUp className="w-5 h-5 text-amber-500" />
+//                           Debt-to-Income
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="text-2xl font-bold text-amber-600">
+//                           {creditProfile.debt_to_income_ratio?.toFixed(1) || 0}%
+//                         </div>
+//                         <p className="text-sm text-slate-600">
+//                           {(creditProfile.debt_to_income_ratio || 0) < 30 ? "Healthy ratio" : "Needs attention"}
+//                         </p>
+//                       </CardContent>
+//                     </Card>
+
+//                     <Card className="glass-effect shadow-lg border-0">
+//                       <CardHeader className="pb-3">
+//                         <CardTitle className="flex items-center gap-2 text-slate-800">
+//                           <Calendar className="w-5 h-5 text-emerald-500" />
+//                           Statement Month
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="text-lg font-bold text-emerald-600">
+//                           {format(new Date(creditProfile.month + "-01"), "MMM yyyy")}
+//                         </div>
+//                         <p className="text-sm text-slate-600">Analysis period</p>
+//                       </CardContent>
+//                     </Card>
+//                   </div>
+
+//                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+//                     <RecurringPayments 
+//                       payments={creditProfile.recurring_payments || []}
+//                       totalCommitments={creditProfile.total_monthly_commitments || 0}
+//                     />
+
+//                     <CreditRecommendations 
+//                       recommendations={creditProfile.recommendations || []}
+//                       riskLevel={creditProfile.risk_level}
+//                       creditScore={creditProfile.credit_score}
+//                     />
+//                   </div>
+
+//                   <div className="flex justify-center">
+//                     <Button 
+//                       variant="outline"
+//                       onClick={() => setShowStatementUpload(true)}
+//                     >
+//                       <Upload className="w-4 h-4 mr-2" />
+//                       Upload New Statement
+//                     </Button>
+//                   </div>
+//                 </>
+//               ) : (
+//                 <div className="text-center py-12">
+//                   <CreditCard className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+//                   <h3 className="text-xl font-semibold text-slate-700 mb-2">No Credit Profile</h3>
+//                   <p className="text-slate-500 mb-6">Upload a bank statement to analyze your credit health</p>
+//                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto mb-6">
+//                     <h4 className="font-medium text-blue-800 mb-2">📄 Bank Statement Requirements</h4>
+//                     <ul className="text-sm text-blue-700 text-left space-y-1">
+//                       <li>• Must be a PDF format</li>
+//                       <li>• Filename should contain "statement" or "bank"</li>
+//                       <li>• Should show at least one month of transactions</li>
+//                       <li>• Must be from a recognized South African bank</li>
+//                     </ul>
+//                   </div>
+//                   <Button 
+//                     onClick={() => setShowStatementUpload(true)}
+//                     className="bg-blue-600 hover:bg-blue-700"
+//                   >
+//                     <Upload className="w-4 h-4 mr-2" />
+//                     Upload Bank Statement
+//                   </Button>
+//                 </div>
+//               )}
+//             </TabsContent>
+//           </Tabs>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }

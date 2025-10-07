@@ -1,0 +1,47 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Shield } from "lucide-react";
+
+const gradeColors = {
+  A: "text-emerald-600 bg-emerald-50",
+  B: "text-blue-600 bg-blue-50", 
+  C: "text-amber-600 bg-amber-50",
+  D: "text-red-600 bg-red-50",
+  "N/A": "text-slate-600 bg-slate-50"
+};
+
+export default function HealthScoreCard({ grade, isLoading }) {
+  return (
+    <Card className="glass-effect shadow-lg border-0">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-slate-800">
+          <Shield className="w-5 h-5 text-emerald-500" />
+          Financial Health
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="animate-pulse">
+            <div className="h-16 w-16 bg-slate-200 rounded-full mb-2"></div>
+            <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${gradeColors[grade]}`}>
+              <span className="text-2xl font-bold">{grade}</span>
+            </div>
+            <div>
+              <p className="text-sm text-slate-600 mb-1">Overall Score</p>
+              <p className="text-xs text-slate-500">
+                {grade === "A" && "Excellent financial health!"}
+                {grade === "B" && "Good financial habits"}
+                {grade === "C" && "Room for improvement"}
+                {grade === "D" && "Needs attention"}
+                {grade === "N/A" && "Set up your budget to see score"}
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

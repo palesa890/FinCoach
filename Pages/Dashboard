@@ -1,0 +1,293 @@
+
+// import React, { useState, useEffect, useCallback } from "react";
+// import { Budget, Transaction, Challenge, User, CreditProfile } from "@/entities/all";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import { Button } from "@/components/ui/button";
+// import { Badge } from "@/components/ui/badge";
+// import { Progress } from "@/components/ui/progress";
+// import { Link } from "react-router-dom";
+// import { createPageUrl } from "@/utils";
+// import { 
+//   TrendingUp, 
+//   TrendingDown, 
+//   Wallet, 
+//   Target, 
+//   Award, 
+//   Activity,
+//   Plus,
+//   ArrowRight,
+//   Shield,
+//   AlertTriangle,
+//   CheckCircle,
+//   Calendar,
+//   DollarSign,
+//   Trophy
+// } from "lucide-react";
+// import { format, startOfMonth, endOfMonth } from "date-fns";
+
+// import HealthScoreCard from "../components/dashboard/HealthScoreCard";
+// import TrafficLightIndicator from "../components/dashboard/TrafficLightIndicator";
+// import MoodSpendingChart from "../components/dashboard/MoodSpendingChart";
+// import QuickActions from "../components/dashboard/QuickActions";
+// import RecentTransactions from "../components/dashboard/RecentTransactions";
+
+// export default function Dashboard() {
+//   const [currentUser, setCurrentUser] = useState(null);
+//   const [budget, setBudget] = useState(null);
+//   const [recentTransactions, setRecentTransactions] = useState([]);
+//   const [activeChallenges, setActiveChallenges] = useState([]);
+//   const [creditProfile, setCreditProfile] = useState(null);
+//   const [isLoading, setIsLoading] = useState(true);
+
+//   const currentMonth = format(new Date(), "yyyy-MM");
+
+//   const loadDashboardData = useCallback(async () => {
+//     setIsLoading(true);
+//     try {
+//       // Load user profile
+//       const user = await User.me();
+//       setCurrentUser(user);
+
+//       // Load current month's budget
+//       const budgets = await Budget.filter({ month: currentMonth }, "-created_date", 1);
+//       setBudget(budgets[0] || null);
+
+//       // Load recent transactions
+//       const transactions = await Transaction.list("-created_date", 10);
+//       setRecentTransactions(transactions);
+
+//       // Load active challenges
+//       const challenges = await Challenge.filter({ completed: false }, "-created_date", 5);
+//       setActiveChallenges(challenges);
+
+//       // Load credit profile
+//       const creditProfiles = await CreditProfile.filter({ month: currentMonth }, "-created_date", 1);
+//       setCreditProfile(creditProfiles[0] || null);
+
+//     } catch (error) {
+//       console.error("Error loading dashboard data:", error);
+//     }
+//     setIsLoading(false);
+//   }, [currentMonth]);
+
+//   useEffect(() => {
+//     loadDashboardData();
+//   }, [loadDashboardData]);
+
+//   const calculateSpendingByMood = () => {
+//     const moodData = {};
+//     recentTransactions
+//       .filter(t => t.type === "expense" && t.mood)
+//       .forEach(t => {
+//         moodData[t.mood] = (moodData[t.mood] || 0) + t.amount;
+//       });
+//     return moodData;
+//   };
+
+//   const getHealthGrade = () => {
+//     if (!budget) return "N/A";
+//     return budget.health_score || "C";
+//   };
+
+//   const getRiskLevel = () => {
+//     if (!budget) return "amber";
+//     return budget.risk_level || "amber";
+//   };
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+//       <div className="p-4 md:p-8">
+//         <div className="max-w-7xl mx-auto">
+//           {/* Header */}
+//           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+//             <div>
+//               <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
+//                 Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}! 👋
+//               </h1>
+//               <p className="text-lg text-slate-600">
+//                 Let's check your financial wellness today
+//               </p>
+//             </div>
+//             <div className="flex gap-3">
+//               <Link to={createPageUrl("Transactions")}>
+//                 <Button className="bg-emerald-600 hover:bg-emerald-700 shadow-lg">
+//                   <Plus className="w-4 h-4 mr-2" />
+//                   Add Expense
+//                 </Button>
+//               </Link>
+//             </div>
+//           </div>
+
+//           {/* Health Overview Row */}
+//           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+//             <HealthScoreCard 
+//               grade={getHealthGrade()}
+//               isLoading={isLoading}
+//             />
+            
+//             <TrafficLightIndicator 
+//               level={getRiskLevel()}
+//               budget={budget}
+//               isLoading={isLoading}
+//             />
+
+//             <Card className="glass-effect shadow-lg border-0">
+//               <CardHeader className="pb-3">
+//                 <CardTitle className="flex items-center gap-2 text-slate-800">
+//                   <Award className="w-5 h-5 text-amber-500" />
+//                   Your Streak
+//                 </CardTitle>
+//               </CardHeader>
+//               <CardContent>
+//                 {isLoading ? (
+//                   <div className="animate-pulse">
+//                     <div className="h-8 bg-slate-200 rounded mb-2"></div>
+//                     <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+//                   </div>
+//                 ) : (
+//                   <div>
+//                     <div className="text-3xl font-bold text-amber-600 mb-1">
+//                       {currentUser?.current_streak || 0} days
+//                     </div>
+//                     <p className="text-sm text-slate-600">
+//                       Best: {currentUser?.longest_streak || 0} days
+//                     </p>
+//                   </div>
+//                 )}
+//               </CardContent>
+//             </Card>
+//           </div>
+
+//           {/* Quick Actions */}
+//           <QuickActions />
+
+//           {/* Main Content Grid */}
+//           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+//             {/* Spending by Category */}
+//             <Card className="glass-effect shadow-lg border-0">
+//               <CardHeader>
+//                 <CardTitle className="flex items-center gap-2 text-slate-800">
+//                   <Activity className="w-5 h-5 text-blue-500" />
+//                   This Month's Spending
+//                 </CardTitle>
+//               </CardHeader>
+//               <CardContent>
+//                 {budget ? (
+//                   <div className="space-y-4">
+//                     <div>
+//                       <div className="flex justify-between text-sm mb-2">
+//                         <span className="text-slate-600">Essential Spending</span>
+//                         <span className="font-medium">
+//                           R{budget.essential_spent?.toFixed(0) || 0} / R{budget.essential_budget?.toFixed(0) || 0}
+//                         </span>
+//                       </div>
+//                       <Progress 
+//                         value={budget.essential_budget ? (budget.essential_spent / budget.essential_budget) * 100 : 0} 
+//                         className="h-3"
+//                       />
+//                     </div>
+//                     <div>
+//                       <div className="flex justify-between text-sm mb-2">
+//                         <span className="text-slate-600">Discretionary Spending</span>
+//                         <span className="font-medium">
+//                           R{budget.discretionary_spent?.toFixed(0) || 0} / R{budget.discretionary_budget?.toFixed(0) || 0}
+//                         </span>
+//                       </div>
+//                       <Progress 
+//                         value={budget.discretionary_budget ? (budget.discretionary_spent / budget.discretionary_budget) * 100 : 0} 
+//                         className="h-3"
+//                       />
+//                     </div>
+//                     <div>
+//                       <div className="flex justify-between text-sm mb-2">
+//                         <span className="text-slate-600">Savings Goal</span>
+//                         <span className="font-medium">
+//                           R{budget.savings_actual?.toFixed(0) || 0} / R{budget.savings_goal?.toFixed(0) || 0}
+//                         </span>
+//                       </div>
+//                       <Progress 
+//                         value={budget.savings_goal ? (budget.savings_actual / budget.savings_goal) * 100 : 0} 
+//                         className="h-3"
+//                       />
+//                     </div>
+//                   </div>
+//                 ) : (
+//                   <div className="text-center py-8">
+//                     <Wallet className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+//                     <p className="text-slate-600 mb-4">No budget set for this month</p>
+//                     <Link to={createPageUrl("Budget")}>
+//                       <Button variant="outline">Set Up Budget</Button>
+//                     </Link>
+//                   </div>
+//                 )}
+//               </CardContent>
+//             </Card>
+
+//             {/* Behavioral Insights */}
+//             <MoodSpendingChart 
+//               moodData={calculateSpendingByMood()} 
+//               isLoading={isLoading}
+//             />
+//           </div>
+
+//           {/* Bottom Row */}
+//           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+//             {/* Recent Transactions */}
+//             <RecentTransactions 
+//               transactions={recentTransactions}
+//               isLoading={isLoading}
+//             />
+
+//             {/* Active Challenges */}
+//             <Card className="glass-effect shadow-lg border-0">
+//               <CardHeader>
+//                 <div className="flex justify-between items-center">
+//                   <CardTitle className="flex items-center gap-2 text-slate-800">
+//                     <Target className="w-5 h-5 text-purple-500" />
+//                     Active Challenges
+//                   </CardTitle>
+//                   <Link to={createPageUrl("Challenges")}>
+//                     <Button variant="ghost" size="sm">
+//                       View all
+//                       <ArrowRight className="w-4 h-4 ml-1" />
+//                     </Button>
+//                   </Link>
+//                 </div>
+//               </CardHeader>
+//               <CardContent>
+//                 {activeChallenges.length > 0 ? (
+//                   <div className="space-y-4">
+//                     {activeChallenges.slice(0, 3).map((challenge) => (
+//                       <div key={challenge.id} className="p-4 bg-slate-50/50 rounded-lg">
+//                         <div className="flex justify-between items-start mb-2">
+//                           <h4 className="font-medium text-slate-800">{challenge.title}</h4>
+//                           <Badge variant="outline" className="text-xs">
+//                             {challenge.difficulty}
+//                           </Badge>
+//                         </div>
+//                         <p className="text-sm text-slate-600 mb-3">{challenge.description}</p>
+//                         <Progress value={challenge.progress || 0} className="h-2" />
+//                         <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
+//                           <span>{challenge.progress || 0}% complete</span>
+//                           <span>{challenge.points_reward} points</span>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+//                 ) : (
+//                   <div className="text-center py-8">
+//                     <Trophy className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+//                     <p className="text-slate-600 mb-4">No active challenges</p>
+//                     <Link to={createPageUrl("Challenges")}>
+//                       <Button variant="outline">Browse Challenges</Button>
+//                     </Link>
+//                   </div>
+//                 )}
+//               </CardContent>
+//             </Card>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }

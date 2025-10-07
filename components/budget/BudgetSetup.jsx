@@ -1,0 +1,188 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Calculator, Target, PiggyBank } from "lucide-react";
+
+export default function BudgetSetup({ onSave, onCancel, currentUser }) {
+  const [budgetData, setBudgetData] = useState({
+    monthly_income: "",
+    essential_budget: "",
+    discretionary_budget: "",
+    savings_goal: ""
+  });
+
+  const [step, setStep] = useState(1);
+
+  const handleInputChange = (field, value) => {
+    const numValue = parseFloat(value) || 0;
+    setBudgetData(prev => ({
+      ...prev,
+      [field]: numValue
+    }));
+
+    // Auto-calculate recommendations
+    if (field === "monthly_income" && numValue > 0) {
+      setBudgetData(prev => ({
+        ...prev,
+        essential_budget: Math.round(numValue * 0.5),
+        discretionary_budget: Math.round(numValue * 0.3),
+        savings_goal: Math.round(numValue * 0.2)
+      }));
+    }
+  };
+
+  const handleSubmit = () => {
+    onSave(budgetData);
+  };
+
+  const totalBudget = budgetData.essential_budget + budgetData.discretionary_budget + budgetData.savings_goal;
+  const isValid = budgetData.monthly_income > 0 && totalBudget <= budgetData.monthly_income;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="p-4 md:p-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-8">
+            <Button variant="outline" onClick={onCancel}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">Set Up Your Budget</h1>
+              <p className="text-slate-600">Let's create a budget that works for you</p>
+            </div>
+          </div>
+
+          <Card className="glass-effect shadow-lg border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="w-5 h-5 text-emerald-600" />
+                Budget Setup
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Monthly Income */}
+              <div>
+                <Label htmlFor="income" className="text-base font-medium">
+                  What's your monthly income?
+                </Label>
+                <p className="text-sm text-slate-500 mb-2">
+                  Include all sources: job, allowances, side hustles
+                </p>
+                <Input
+                  id="income"
+                  type="number"
+                  placeholder="Enter amount in Rands"
+                  value={budgetData.monthly_income}
+                  onChange={(e) => handleInputChange("monthly_income", e.target.value)}
+                  className="text-lg h-12"
+                />
+              </div>
+
+              {budgetData.monthly_income > 0 && (
+                <div className="bg-emerald-50 p-6 rounded-lg space-y-4">
+                  <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    Recommended Budget (50/30/20 Rule)
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Essential Expenses (50%)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={budgetData.essential_budget}
+                        onChange={(e) => handleInputChange("essential_budget", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Rent, groceries, transport
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Fun Money (30%)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={budgetData.discretionary_budget}
+                        onChange={(e) => handleInputChange("discretionary_budget", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Entertainment, dining out
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Savings Goal (20%)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={budgetData.savings_goal}
+                        onChange={(e) => handleInputChange("savings_goal", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Emergency fund, goals
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Budget Summary */}
+                  <div className="bg-white p-4 rounded-lg">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Total Allocated:</span>
+                      <span className={`font-semibold ${
+                        totalBudget <= budgetData.monthly_income ? 'text-emerald-600' : 'text-red-600'
+                      }`}>
+                        R{totalBudget.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Remaining:</span>
+                      <span className={`font-semibold ${
+                        budgetData.monthly_income - totalBudget >= 0 ? 'text-emerald-600' : 'text-red-600'
+                      }`}>
+                        R{(budgetData.monthly_income - totalBudget).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {!isValid && (
+                    <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                      <p className="text-red-800 text-sm">
+                        ⚠️ Your budget exceeds your income. Please adjust the amounts.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-6">
+                <Button variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={!isValid}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <PiggyBank className="w-4 h-4 mr-2" />
+                  Create Budget
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

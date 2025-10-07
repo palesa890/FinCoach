@@ -1,0 +1,77 @@
+{
+  "name": "Challenge",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Challenge title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Challenge description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "saving",
+        "spending_reduction",
+        "debt_payoff",
+        "learning",
+        "budgeting"
+      ],
+      "description": "Challenge category"
+    },
+    "target_amount": {
+      "type": "number",
+      "description": "Target amount to save/reduce"
+    },
+    "current_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Current amount saved/reduced"
+    },
+    "duration_days": {
+      "type": "number",
+      "description": "Challenge duration in days"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "default": "medium"
+    },
+    "points_reward": {
+      "type": "number",
+      "description": "Points earned for completion"
+    },
+    "badge_name": {
+      "type": "string",
+      "description": "Badge earned for completion"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Current progress percentage"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "category"
+  ]
+}
